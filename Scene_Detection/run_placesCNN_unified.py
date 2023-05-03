@@ -15,15 +15,16 @@ import argparse
 import time
 import tensorflow_hub as hub
 import math
+import re
+from basicsr.archs.rrdbnet_arch import RRDBNet
+from scenedetect import detect, ContentDetector
 
 from cv2 import dnn_superres
 from ISR.models import RDN, RRDN
 
-#for gui 
-
-
-
-
+#realesgran inference
+def realesgran(upload):
+    os.system("!python3 inference_realesrgan.py -n RealESRGAN_x4plus -i" + upload + "--outscale 3.5") #type: ignore
 
 #slice one frame from video 
 def vid_slice(vid_filename):
@@ -40,18 +41,15 @@ def vid_slice(vid_filename):
     #extract the frame
     video.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
     ret, frame = video.read()
-    # frame_filename = ""
-    # if ret:
+    # store the frame in a temp jpg file
     frame_filename = "original_image.jpg"
     cv2.imwrite(frame_filename, frame)
 
     return frame_filename
 
+    
 #clearing the resolution
-# def load_realesgran(model_path):
-
-
- # hacky way to deal with the Pytorch 1.0 update
+# hacky way to deal with the Pytorch 1.0 update
 def recursion_change_bn(module):
     if isinstance(module, torch.nn.BatchNorm2d):
         module.track_running_stats = 1 # type: ignore
@@ -178,8 +176,6 @@ def scene_predict(filename, model_name="none"):
     weight_softmax[weight_softmax<0] = 0
 
     frame_file = vid_slice(filename)
-    #gamme correction on the image 
-
     #isr
 
     #preprocess image. convert to numpy 
@@ -187,7 +183,7 @@ def scene_predict(filename, model_name="none"):
     # img = cv2.imread('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Scene_Recognition/viterbi.jpg')
 
     #Selecting the super resolution model
-    if model_name != "none":
+    if model_name != "none" and model_name != "realesgran":
         lr_img = np.array(img)
         if model_name=="psnr-small":
             supmodel = RDN(weights='psnr-small')
@@ -201,14 +197,8 @@ def scene_predict(filename, model_name="none"):
         sr_img = supmodel.predict(lr_img) #type: ignore
         img = Image.fromarray(sr_img)
 
-    
-    
     input_img = V(tf(img)).unsqueeze(0) 
     # cv2.imwrite("output_image.jpg", np.array(img)) 
-
-    # input_img = sr.upsample(img)
-
-
     # forward pass
     logit = model.forward(input_img) # type: ignore
     h_x = F.softmax(logit, 1).data.squeeze()
@@ -216,13 +206,7 @@ def scene_predict(filename, model_name="none"):
     probs = probs.numpy()
     idx = idx.numpy()
 
-    # print('RESULT ON ' + img_url)
-
-   
-
     # output the IO prediction
-
-
     io_image = np.mean(labels_IO[idx[:10]]) # vote for the indoor or outdoor
     # print(io_image)
 
@@ -255,11 +239,17 @@ def scene_predict(filename, model_name="none"):
     print(', '.join([labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]))
     attributes = [labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]
     print(attributes)
-    #store all results inside array for easier access
+    
+    #refine the catgeory output to have only text and spaces 
+    category_prediction = categories[0]
+    for char in category_prediction:
+        if (char.isalpha() != True):
+            category_prediction = category_prediction.replace(char, " ")
+        
     result_dict = {
         "environment": environment,
-        "scene_category": categories[0],
-        "attribute_1": attributes[0],
+        "scene_category": category_prediction,
+        "attribute_1": attributes[1],
         "attribute_2": attributes[2],
         "attribute_3": attributes[3]
     }
@@ -272,4 +262,4 @@ def scene_predict(filename, model_name="none"):
     return result_dict
 
 
-# print(scene_predict('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Abuse001_x264.mp4'))
+print(scene_predict('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Abuse001_x264.mp4'))
