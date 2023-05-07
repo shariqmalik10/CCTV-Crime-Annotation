@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./Scene-Detection"
+        "./Scene-Detection",
+        "./Scene_Detection/image-super-resolution"
     ]
 }

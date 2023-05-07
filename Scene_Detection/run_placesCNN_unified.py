@@ -20,7 +20,7 @@ from basicsr.archs.rrdbnet_arch import RRDBNet
 from scenedetect import detect, ContentDetector
 
 from cv2 import dnn_superres
-from ISR.models import RDN, RRDN
+from Scene_Detection.image_super_resolution.ISR.models import RDN, RRDN
 import Scene_Detection.wideresnet as wideresnet
 
 #realesgran inference

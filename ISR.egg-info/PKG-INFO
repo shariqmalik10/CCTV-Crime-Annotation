@@ -1,0 +1,27 @@
+Metadata-Version: 2.1
+Name: ISR
+Version: 2.2.0
+Summary: Image Super Resolution
+Author: Francesco Cardinale
+Author-email: testadicardi@gmail.com
+License: Apache 2.0
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Education
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Provides-Extra: tests
+Provides-Extra: docs
+Provides-Extra: gpu
+Provides-Extra: dev
+
+
+ISR (Image Super-Resolution) is a library to upscale and improve the quality of low resolution images.
+
+Read the documentation at: https://idealo.github.io/image-super-resolution/
+
+ISR is compatible with Python 3.6 and is distributed under the Apache 2.0 license.
