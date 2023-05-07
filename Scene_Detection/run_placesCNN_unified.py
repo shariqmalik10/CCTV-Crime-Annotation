@@ -21,6 +21,7 @@ from scenedetect import detect, ContentDetector
 
 from cv2 import dnn_superres
 from ISR.models import RDN, RRDN
+import Scene_Detection.wideresnet as wideresnet
 
 #realesgran inference
 def realesgran(upload):
@@ -45,7 +46,10 @@ def vid_slice(vid_filename):
     frame_filename = "original_image.jpg"
     cv2.imwrite(frame_filename, frame)
 
-    return frame_filename
+    # return frame_filename
+
+    #experimenting
+    return frame
 
     
 #clearing the resolution
@@ -61,7 +65,7 @@ def recursion_change_bn(module):
 def load_labels():
     # prepare all the labels
     # scene category relevant
-    file_name_category = 'categories_places365.txt'
+    file_name_category = '/Users/shariqmalik/Documents/3rdYS2/CCTV-Crime-Annotation/Scene_Detection/categories_places365.txt'
     if not os.access(file_name_category, os.W_OK):
         synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/categories_places365.txt'
         os.system('wget ' + synset_url)
@@ -72,7 +76,7 @@ def load_labels():
     classes = tuple(classes)
 
     # indoor and outdoor relevant
-    file_name_IO = 'IO_places365.txt'
+    file_name_IO = '/Users/shariqmalik/Documents/3rdYS2/CCTV-Crime-Annotation/Scene_Detection/IO_places365.txt'
     if not os.access(file_name_IO, os.W_OK):
         synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/IO_places365.txt'
         os.system('wget ' + synset_url)
@@ -85,14 +89,14 @@ def load_labels():
     labels_IO = np.array(labels_IO)
 
     # scene attribute relevant
-    file_name_attribute = 'labels_sunattribute.txt'
+    file_name_attribute = '/Users/shariqmalik/Documents/3rdYS2/CCTV-Crime-Annotation/Scene_Detection/labels_sunattribute.txt'
     if not os.access(file_name_attribute, os.W_OK):
         synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/labels_sunattribute.txt'
         os.system('wget ' + synset_url)
     with open(file_name_attribute) as f:
         lines = f.readlines()
         labels_attribute = [item.rstrip() for item in lines]
-    file_name_W = 'W_sceneattribute_wideresnet18.npy'
+    file_name_W = '/Users/shariqmalik/Documents/3rdYS2/CCTV-Crime-Annotation/Scene_Detection/W_sceneattribute_wideresnet18.npy'
     if not os.access(file_name_W, os.W_OK):
         synset_url = 'http://places2.csail.mit.edu/models_places365/W_sceneattribute_wideresnet18.npy'
         os.system('wget ' + synset_url)
@@ -102,20 +106,6 @@ def load_labels():
 
 def hook_feature(module, input, output):
     features_blobs.append(np.squeeze(output.data.cpu().numpy()))
-
-def returnCAM(feature_conv, weight_softmax, class_idx):
-    # generate the class activation maps upsample to 256x256
-    size_upsample = (256, 256)
-    nc, h, w = feature_conv.shape
-    output_cam = []
-    for idx in class_idx:
-        cam = weight_softmax[class_idx].dot(feature_conv.reshape((nc, h*w)))
-        cam = cam.reshape(h, w)
-        cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
-        cam_img = np.uint8(255 * cam_img)
-        output_cam.append(cv2.resize(cam_img, size_upsample)) # type: ignore
-    return output_cam
 
 def returnTF():
 # load the image transformer
@@ -130,12 +120,12 @@ def returnTF():
 def load_model():
     # this model has a last conv feature map as 14x14
 
-    model_file = 'wideresnet18_places365.pth.tar'
+    model_file = '/Users/shariqmalik/Documents/3rdYS2/CCTV-Crime-Annotation/Scene_Detection/wideresnet18_places365.pth.tar'
     if not os.access(model_file, os.W_OK):
         os.system('wget http://places2.csail.mit.edu/models_places365/' + model_file)
         os.system('wget https://raw.githubusercontent.com/csailvision/places365/master/wideresnet.py')
 
-    import wideresnet
+    
     model = wideresnet.resnet18(num_classes=365)
     checkpoint = torch.load(model_file, map_location=lambda storage, loc: storage)
     state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
@@ -179,10 +169,13 @@ def scene_predict(filename, model_name="none"):
     #isr
 
     #preprocess image. convert to numpy 
-    img = Image.open(frame_file).convert("RGB") # type: ignore
-    # img = cv2.imread('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Scene_Recognition/viterbi.jpg')
+    # img = Image.open(frame_file) # type: ignore
 
-    #Selecting the super resolution model
+    #experimenting
+    img = frame_file
+
+    # Selecting the super resolution model
+    #convert numpy to array regardless of network used or even if there is no network 
     if model_name != "none" and model_name != "realesgran":
         lr_img = np.array(img)
         if model_name=="psnr-small":
@@ -196,9 +189,12 @@ def scene_predict(filename, model_name="none"):
         #may raise unbound error however can be ignored as it will enter the statement only if user selects a model for super resolution 
         sr_img = supmodel.predict(lr_img) #type: ignore
         img = Image.fromarray(sr_img)
+    elif model_name=="none":
+        img = Image.fromarray(img)
 
-    input_img = V(tf(img)).unsqueeze(0) 
-    # cv2.imwrite("output_image.jpg", np.array(img)) 
+    #normalize input 
+    input_img = V(tf(img)).unsqueeze(0)
+    cv2.imwrite("output_image.jpg", np.asarray(img)) 
     # forward pass
     logit = model.forward(input_img) # type: ignore
     h_x = F.softmax(logit, 1).data.squeeze()
@@ -208,15 +204,13 @@ def scene_predict(filename, model_name="none"):
 
     # output the IO prediction
     io_image = np.mean(labels_IO[idx[:10]]) # vote for the indoor or outdoor
-    # print(io_image)
 
+    #determine whether indoor or outdoor environment using io_image
     environment = ""
     if io_image < 0.5:
         environment = "indoor"
-        # print('--TYPE OF ENVIRONMENT: indoor')
     else:
         environment = "outdoor"
-        # print('--TYPE OF ENVIRONMENT: outdoor')
 
     # output the prediction of scene category
     print('--SCENE CATEGORIES:')
@@ -230,8 +224,8 @@ def scene_predict(filename, model_name="none"):
             categories.append(classes[idx[i]])
         # print('{:.3f}x -> {}'.format(probs[i], classes[idx[i]]))
 
-    print(scene_catgeories)
-    print(categories)
+    # print(scene_catgeories)
+    # print(categories)
     # output the scene attributes
     responses_attribute = W_attribute.dot(features_blobs[1])
     idx_a = np.argsort(responses_attribute)
@@ -240,26 +234,26 @@ def scene_predict(filename, model_name="none"):
     attributes = [labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]
     print(attributes)
     
-    #refine the catgeory output to have only text and spaces 
+    #refine the catgeory output to have only text and spaces.
     category_prediction = categories[0]
     for char in category_prediction:
         if (char.isalpha() != True):
             category_prediction = category_prediction.replace(char, " ")
-        
+    
+    #make a result dictionary and store important attributes that need to be output in the UI
     result_dict = {
         "environment": environment,
         "scene_category": category_prediction,
-        "attribute_1": attributes[1],
+        "attribute_1": attributes[0],
         "attribute_2": attributes[2],
         "attribute_3": attributes[3]
     }
 
-    # generate class activation mapping
-    # print('Class activation map is saved as cam.jpg')
-    CAMs = returnCAM(features_blobs[0], weight_softmax, [idx[0]])
+    #print result dictionary 
     print("Prediction with model: " + model_name)
+    print(result_dict)
 
     return result_dict
 
 
-print(scene_predict('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Abuse001_x264.mp4'))
+# print(scene_predict('/Users/shariqmalik/Documents/3rdYS2/FYP/Scene_Detection_Algorithm/Anomaly-Videos-Part-1/Abuse/Abuse002_x264.mp4', "rrdn"))
