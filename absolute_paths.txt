@@ -1,0 +1,24 @@
+our working directory: "C:/Users/Tee/Desktop/FYP/GitFYP/Crime_Annotation"
+
+our fyp folder:
+Crime_Annotation
+
+so just change the working directory (for both files) to:
+path/to/Crime_Annotation
+
+
+gui.py
+working_dir line 17 
+C:/Users/Tee/Desktop/FYP/GitFYP/Crime_Annotation/mmaction2 line 54 & 55
+
+#there isn't a need to change the name of the env, if the user is following the instructions of creating the env using the yaml file
+the_cmd = 'conda run -n lastfyp python analyse_vid.py {}'.format(vid_file) line 60 (the name of the env this command is running on)
+
+
+run_placesCNN_unified.py
+file_name_category line 69
+file_name_IO line 80
+file_name_attribute line 93
+file_name_W line 100
+model_file line 124
+
