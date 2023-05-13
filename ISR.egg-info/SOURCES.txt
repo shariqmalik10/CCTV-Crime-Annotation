@@ -1,5 +1,0 @@
-ISR.egg-info/PKG-INFO
-ISR.egg-info/SOURCES.txt
-ISR.egg-info/dependency_links.txt
-ISR.egg-info/requires.txt
-ISR.egg-info/top_level.txt
